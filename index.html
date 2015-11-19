@@ -1,0 +1,246 @@
+<html>
+<head>
+
+  <style>
+   @font-face {
+      font-family: "GeoSans";
+      src: url("assets/GeosansLight.ttf");
+    }
+    html{ color:#ffc; background:#000; font-family:"GeoSans" }
+    body{
+      font-size:30px;
+    }
+    a{
+      color: #fff;
+    }
+    #renderer{
+      position:fixed;
+      top:0px;
+      left:0px;
+    }
+    code{
+      color:#fff;
+      font-size:20px;
+    }
+  </style>
+
+</head>
+<body style="margin:0px">
+
+<script src="lib/three.js"></script>
+<script src="lib/jquery.min.js"></script>
+<script src="lib/stats.min.js"></script>
+<script src="lib/underscore.js"></script>
+<script src="lib/TrackballControls.js"></script>
+<script src="lib/ShaderLoader.js"></script>
+<script src="lib/ObjectControls.js"></script>
+
+<script src="lib/PhysicsRenderer.js"></script>
+
+
+<script src="src/Catenary.js"></script>
+<script src="src/Pin.js"></script>
+<script src="src/Transform.js"></script>
+
+
+<script>
+
+
+  var scene , camera , renderer, clock , controls, objectControls;
+
+
+  var iPoint;
+
+
+  var shaders = new ShaderLoader( 'shaders' );
+
+  //shaders.load( 'ss-curlFront'    , 'sim'    , 'simulation' );
+
+  shaders.load( 'fs-catenary'  , 'catenary' , 'fragment' );
+  shaders.load( 'vs-catenary'  , 'catenary' , 'vertex'   );
+
+  shaders.shaderSetLoaded = function(){
+
+    init();
+    animate();
+
+  }
+
+
+  var G = {
+
+    v1: new THREE.Vector3(),
+
+    pins :[],
+    connections:[],
+    transforms:[],
+
+    activeConnection : null,
+    activeNode : null,
+
+    hoveredPin: null,
+    activePin: null,
+
+
+
+    theme:{
+
+      pinGeo: new THREE.CylinderGeometry( .05 , 0 , .1 ),
+      pinMat: new THREE.MeshNormalMaterial(),
+
+      transformGeo: new THREE.CubeGeometry( .74 , .4 , .1 ),
+      transformMat: new THREE.MeshNormalMaterial(),
+
+    }
+
+
+
+  }
+
+  
+  function init(){
+
+
+
+      /*
+
+         Default threejs stuff!
+
+      */
+      scene = new THREE.Scene();
+
+      var ar = window.innerWidth / window.innerHeight;
+
+      camera = new THREE.PerspectiveCamera( 40, ar , .01, 100 );
+      camera.position.z = 3;
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize( window.innerWidth, window.innerHeight );
+      //renderer.setPixelRatio( .5 )
+
+      renderer.domElement.id = "renderer"
+      document.body.appendChild( renderer.domElement );
+
+
+      objectControls = new ObjectControls( camera );
+
+
+      controls = new THREE.TrackballControls( camera );
+
+      controls.noRotate = true;
+      clock = new THREE.Clock();
+
+      stats = new Stats();
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.left = "0px";
+      stats.domElement.style.bottom = "-30px";
+      stats.domElement.style.zIndex = "999";
+      document.body.appendChild( stats.domElement );
+
+      var g = new THREE.CubeGeometry( .3 , .3 , .3 );
+      var m = new THREE.MeshNormalMaterial();
+
+      for(var i = 0; i< 30; i++ ){
+
+        var t = new Transform( objectControls );
+        
+  
+
+        
+
+        for( var j = 0; j < 6; j++ ){
+
+          var r = Math.random();
+          if( r < .5 ){
+
+              t.addPin( "in" )
+
+          }else{
+
+              t.addPin( "out"  )
+
+          } 
+
+        }
+
+        G.v1.set( (Math.random() -.5) * 10,
+                  (Math.random() -.5) * 10,
+                  (Math.random() -.5) * 10 )
+
+        t.place( G.v1 );
+
+        G.transforms.push( t );
+
+
+      }
+
+
+      mouse = new THREE.Mesh( new THREE.IcosahedronGeometry( .01 , 1 ), new THREE.MeshNormalMaterial());
+
+      scene.add( mouse );
+
+
+      var geo = new THREE.PlaneGeometry( 100000 , 100000 );
+      var mat = new THREE.MeshNormalMaterial({side: THREE.DoubleSide, opacity: 0, transparent: true});
+      intersectionPlane = new THREE.Mesh( geo , mat );
+      //intersectionPlane.visible = false;
+      scene.add( intersectionPlane );
+
+
+  }
+
+  function animate(){
+
+
+
+
+    intersectionPlane.lookAt( camera.position );
+
+
+
+    iPoint = objectControls.raycaster.intersectObject( intersectionPlane );
+    //1console.log( iPoint );
+
+    if( iPoint[0] ) mouse.position.copy( iPoint[0].point );
+
+
+
+
+    if( !G.activeNode ){
+      controls.update( true );
+    }else{
+      controls.update( false );
+    }
+
+    objectControls.update();
+
+    for( var i = 0; i < G.pins.length; i++ ){
+
+      G.pins[i].update();
+
+    }
+
+    for( var i = 0; i < G.connections.length; i++ ){
+
+      G.connections[i].update();
+
+    }
+
+   
+
+    renderer.render( scene , camera );
+    stats.update();
+
+        requestAnimationFrame( animate );
+
+  }
+
+
+
+</script>
+ 
+
+
+
+</body>
+<html>
